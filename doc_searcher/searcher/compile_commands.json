@@ -1,0 +1,16 @@
+[
+	{
+		"arguents":[
+			"g++",
+			"-c",
+			"-std=c++11",
+			"-I",
+			"/home/gxr116/jieba/cppjieba/include",
+			"-o",
+			"searcher",
+			"searcher.cc"
+		],
+		"directory": "/home/gxr116/boost16/doc_searcher/searcher",
+		"file": "searcher.cc"
+	}
+]

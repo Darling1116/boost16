@@ -35,6 +35,7 @@ namespace common{
                 return true;
             }
 
+			//基于Boost中的字符串切分，然后封装，delimiter表示分隔符
             static void Split(const string& input,const string& delimiter,
                         vector<string>* output){
                 boost::split(*output,input,boost::is_any_of(delimiter),
