@@ -1,0 +1,16 @@
+[
+	{
+		"arguents":[
+			"g++",
+			"-c",
+			"-std=c++11",
+			"-I",
+			"/home/gxr116/jieba/cppjieba/include",
+			"-o",
+			"http_server",
+			"http_server.cc"
+		],
+		"directory": "/home/gxr116/boost16/doc_searcher/http_server",
+		"file": "http_server.cc"
+	}
+]

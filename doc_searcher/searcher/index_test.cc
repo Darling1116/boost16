@@ -1,4 +1,4 @@
-#include "searcher.cc"
+#include "searcher.h"
 #include "ostream"
 
 int main( ){
@@ -22,7 +22,7 @@ int main( ){
         std::cout << "title:" << doc_info->title << std::endl;
         std::cout << "url:" << doc_info->url << std::endl;
         std::cout << "content:" << doc_info->content << std::endl;
-        std::cout << "=============================================" << std::endl;
+        std::cout << "================================================================" << std::endl;
     }
 
 	return 0;

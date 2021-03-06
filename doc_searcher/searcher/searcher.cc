@@ -1,9 +1,13 @@
 #include "searcher.h"
+
+#include "boost/algorithm/string/case_conv.hpp"
 #include "../common/util.hpp"
+
 #include "fstream"
 #include "string"
+#include "algorithm"
 
-
+#include "jsoncpp/json/json.h"
 
 namespace searcher{
 
@@ -41,13 +45,15 @@ const InvertedList *Index::GetInvertedList(const string& key){
  // 建立索引
 bool Index::Build(const string& input_path){
 //按行读取输入文件内容，即预处理模块生成的raw_input文件
-	std::cout <<input_path<<"开始构建索引"<< std::endl;
+	std::cerr <<input_path<<"开始构建索引"<< std::endl;
     std::ifstream file(input_path.c_str());
     if(!file.is_open()){
         std::cout <<input_path<< "raw_input文件打开失败" << std::endl;
 		return false;
 	}
+
 	string line;//按行读取
+
 	while(std::getline(file,line)){
 		//针对当前行数据，解析成DocInfo对象，并构造正排索引
         DocInfo* doc_info = BuildForward(line);
@@ -58,8 +64,13 @@ bool Index::Build(const string& input_path){
 		//根据当前的DocInfo对象，进行解析，并构造成倒排索引
 		BuildInverted(*doc_info);
 		
+		//此处循环可能会影响整个程序的执行效率，要尽量减少影响
+		if (doc_info->doc_id % 100 == 0){
+			std::cerr << doc_info->doc_id << std::endl;
+		}
+		
     }
-	cout<<"正排索引构造成功"<<endl;
+	std::cerr <<"正排索引构造成功"<< std::endl;
     file.close();
     return true;
 }
@@ -143,7 +154,96 @@ void Index::BuildInverted(const DocInfo& doc_info){
 void Index::CutWord(const string &input, vector<string> *output){
 	jieba.CutForSearch(input,*output);
 }
+
+
+
+
+///////////////////////////////////////
+//初始化，构建指定文档的索引
+bool Searcher::Init(const string& input_path){
+        return index->Build(input_path);
+    }
+
+
+//指定文本进行搜索
+bool Searcher::Search(const string& query,string* output){
+        //分词：针对查询词进行分词
+        vector<string> tokens;
+        index->CutWord(query, &tokens);
+
+        //触发：根据分词的结果，进行倒排索引，得到相关文档
+        vector<Weight> all_token_result;
+        for(string word : tokens){
+            boost::to_lower(word);
+            //const vector<backwardIdx>*
+            auto* inverted_list = index->GetInvertedList(word);
+            if(inverted_list == nullptr){
+                //  没有这个关键词
+                continue;
+            }
+            //token包含多个结果，把多个结果合并到一起，才能进行统一的排序
+            all_token_result.insert(all_token_result.end(), inverted_list->begin(), inverted_list->end());
+        }
+
+
+		//排序：把查到的文档倒排拉链合并到一起并按照权重进行降序排序
+       std::sort(all_token_result.begin(), all_token_result.end(), [](const Weight& w1, const Weight& w2){return w1.weight > w2.weight;});
+					//实现降序排序
+		
+
+        //包装：把doc_info的内容构造成最终预期的结果
+        Json::Value results;
+		//每个搜索结果就是一个JSON
+        for(const auto& weight : all_token_result){
+            //根据weight中的doc_id查找正排索引
+            const DocInfo* doc_info = index->GetDocInfo(weight.doc_id);
+			//把doc_info对象再进一步包装成一个JSON对象
+            Json::Value result;
+            result["title"]    = doc_info->title;
+            result["url"]      = doc_info->url;
+            result["desc"]     = GenerateDesc(doc_info->content, weight.word);
+            results.append(result); 
+        }
+		//把得到的results这个JSON对象序列化成字符串，写入output中
+        Json::FastWriter writer;
+        *output = writer.write(results);
+        return true;
+   }
+
+
+
+   //得到关键字前后的数据，在前端页面显示的文本
+    string Searcher::GenerateDesc(const string& content,const string& word){
+
+        size_t first_pos = content.find(word);
+		size_t desc_beg = 0;    //显示文本开始的位置
+
+        if (first_pos == string::npos){
+            //关键字不存在,就从头开始作为起始位置
+			if (content.size() < 160){
+				return content;
+			}
+			string desc = content.substr(0, 160);
+			desc[desc.size() -1 ] = '.';
+			desc[desc.size() -2 ] = '.';
+			desc[desc.size() -3 ] = '.';
+			return desc;
+		}
+		//关键字找到了，就以first_pos为基准，往前找一些字节
+		desc_beg = first_pos < 60 ? 0 :first_pos - 60;
+		if (desc_beg + 160 >= content.size()){
+			return content.substr(desc_beg);
+		}
+		else{
+			string desc = content.substr(desc_beg, 160);
+			desc[desc.size() -1 ] = '.';
+			desc[desc.size() -2 ] = '.';
+			desc[desc.size() -3 ] = '.';
+			return desc;
+		}
+    }
+
+
+
+
 }
-
-
-

@@ -42,6 +42,8 @@ struct DocInfo{
 typedef vector<Weight> InvertedList;
 
 
+
+//////////////索引模块/////////////
 //Index类用于整个索引结构，并且提供一些供外部调用的API
 class Index{
      private:
@@ -60,6 +62,8 @@ class Index{
         const InvertedList *GetInvertedList(const string& key);
 		//建立索引
         bool Build(const string& input_path);
+		//分词函数
+		void CutWord(const string& input, vector<string>* output);
 
 
      private:
@@ -67,21 +71,33 @@ class Index{
         DocInfo *BuildForward(const string& line);
         //根据正排索引节点，构造倒排索引节点
         void BuildInverted(const DocInfo& doc_info);
-		void CutWord(const string& input, vector<string>* output);
 		
-		cppjieba::Jieba jieba;//////
+
+
+		
+		cppjieba::Jieba jieba;
     };
 
 
 
-//索引模块
 
 
+//////////////搜索模块/////////////
+class Searcher{
+     private:
+		 //需要索引进行搜索
+         Index* index;
 
+         //得到关键字前后的数据，在前端页面显示的文本
+         string GenerateDesc(const string& content, const string& word);
 
-
-
-//搜索模块
+	 public:
+         Searcher() : index(new Index())  { }
+            //  初始化，构建指定文档的索引
+         bool Init(const string& input_path);
+            //  指定文本进行搜索
+         bool Search(const string& query,string* results);
+};
 
 
 }
